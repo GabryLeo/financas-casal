@@ -7,7 +7,7 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-.container { max-width: 960px; margin: 0 auto; padding: 20px 16px 60px; }
+.container { max-width: 1100px; margin: 0 auto; padding: 20px 16px 60px; }
 
 h1 { margin: 8px 0 20px; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
 h2 { margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #fff; }
@@ -18,6 +18,7 @@ h2 { margin: 0 0 12px; font-size: 16px; font-weight: 700; color: #fff; }
   background: #000; color: #fff;
   border-radius: 14px; padding: 16px; margin-bottom: 16px;
 }
+.card .hint { color: #ccc; font-size: 13px; margin: 0 0 10px; }
 
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
 .row input { flex: 1 1 200px; }
@@ -40,7 +41,7 @@ button {
 button:hover { opacity: .9; }
 button:active { transform: scale(.98); }
 
-/* Chips (pessoas) */
+/* Chips */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .chip {
   display: inline-flex; align-items: center; gap: 8px;
@@ -49,6 +50,14 @@ button:active { transform: scale(.98); }
   font-size: 14px; cursor: pointer; user-select: none;
 }
 .chip.active { background: #fff; color: #000; border-color: #fff; }
+.chip.futuro {
+  border-style: dashed;
+  opacity: 0.85;
+}
+.chip.futuro::before {
+  content: '🔮';
+  font-size: 11px;
+}
 
 /* X pequenininho pra remover pessoa */
 .chip .x-btn {
@@ -83,12 +92,7 @@ button:active { transform: scale(.98); }
 
 /* Tabela por pessoa */
 .tabela-pessoa { margin-bottom: 16px; }
-.tabela-pessoa h2 {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 10px;
-}
 
-/* Big numbers da pessoa (topo da tabela) */
 .pessoa-resumo {
   display: grid; grid-template-columns: repeat(3, 1fr);
   gap: 8px; margin-bottom: 14px;
@@ -104,17 +108,26 @@ button:active { transform: scale(.98); }
 }
 .pessoa-resumo .valor { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
 
-/* Form de lançamento (dentro da tabela da pessoa) */
+/* Form de lançamento */
 .form-lancamento {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  grid-template-columns: 2fr 1fr 1fr 1.2fr 1fr auto;
   gap: 8px; margin-bottom: 12px;
 }
 .form-lancamento input,
 .form-lancamento select { padding: 10px 12px; font-size: 14px; }
 .form-lancamento button { padding: 10px 16px; font-size: 14px; }
 
-/* Tabela em si */
+/* Grupo por mês */
+.grupo-mes {
+  font-size: 12px; font-weight: 700; color: #fff;
+  text-transform: uppercase; letter-spacing: .08em;
+  padding: 8px 4px 6px; margin-top: 10px;
+  border-bottom: 1px solid #333;
+}
+.grupo-mes.futuro { color: #9db; }
+
+/* Tabela */
 .table-wrap { overflow-x: auto; }
 table {
   width: 100%; border-collapse: collapse;
@@ -135,6 +148,13 @@ td .tipo-entrada { color: #16c784; font-weight: 700; }
 td .tipo-saida   { color: #ff4d4f; font-weight: 700; }
 td .valor-entrada { color: #16c784; font-weight: 700; }
 td .valor-saida   { color: #ff4d4f; font-weight: 700; }
+td.futuro-row { opacity: 0.75; }
+td.futuro-row .tag-futuro {
+  display: inline-block; font-size: 10px;
+  background: #143; color: #9db; padding: 2px 6px;
+  border-radius: 4px; margin-left: 6px;
+  text-transform: uppercase; letter-spacing: .05em;
+}
 
 .pessoas-sub {
   font-size: 10px; color: #888;
@@ -150,6 +170,46 @@ td .valor-saida   { color: #ff4d4f; font-weight: 700; }
 .btn-trash:hover { background: #2a0000; border-color: #ff4d4f; color: #ff4d4f; }
 
 .empty { text-align: center; padding: 14px; color: #999; font-size: 13px; }
+
+/* Comparativo */
+.comparativo-wrap {
+  margin-top: 16px;
+}
+.comparativo-titulo {
+  font-size: 12px; font-weight: 700; color: #fff;
+  text-transform: uppercase; letter-spacing: .08em;
+  margin-bottom: 10px;
+}
+.comparativo-grid {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+.comp-card {
+  background: #0a0a0a; border: 1px solid #222;
+  border-radius: 10px; padding: 12px;
+}
+.comp-card.diff { border-color: #333; background: #0d0d0d; }
+.comp-card h4 {
+  margin: 0 0 8px; font-size: 12px;
+  color: #bbb; text-transform: uppercase; letter-spacing: .06em;
+  font-weight: 700;
+}
+.comp-linha {
+  display: flex; justify-content: space-between;
+  align-items: center; font-size: 13px;
+  padding: 3px 0;
+}
+.comp-linha .lbl { color: #888; font-size: 11px; text-transform: uppercase; }
+.comp-linha .val { font-weight: 700; }
+.comp-linha .val.entrada { color: #16c784; }
+.comp-linha .val.saida { color: #ff4d4f; }
+.comp-linha .val.pos { color: #16c784; }
+.comp-linha .val.neg { color: #ff4d4f; }
+.comp-linha .val.zero { color: #888; }
+.comp-sub {
+  display: block; font-size: 10px;
+  color: #666; font-weight: 500;
+}
 
 @media (max-width: 640px) {
   .resumo-inline, .pessoa-resumo { grid-template-columns: 1fr; }
