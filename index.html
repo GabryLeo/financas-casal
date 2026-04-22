@@ -10,7 +10,7 @@
   <main class="container">
     <h1>Finanças</h1>
 
-    <!-- Bloco sempre visível: adicionar pessoa -->
+    <!-- Adicionar pessoa -->
     <section class="card">
       <h2>Adicionar pessoa</h2>
       <form id="form-pessoa" class="row">
@@ -20,82 +20,20 @@
       <div id="lista-pessoas" class="chips"></div>
     </section>
 
-    <!-- Restante da UI só aparece com pelo menos 1 pessoa -->
     <div id="app" class="hidden">
 
-      <!-- Big numbers -->
-      <section class="resumo">
-        <div class="card big">
-          <span class="label">Entrada</span>
-          <span id="total-entrada" class="valor entrada">R$ 0,00</span>
-        </div>
-        <div class="card big">
-          <span class="label">Saída</span>
-          <span id="total-saida" class="valor saida">R$ 0,00</span>
-        </div>
-        <div class="card big">
-          <span class="label">Total</span>
-          <span id="total-geral" class="valor">R$ 0,00</span>
+      <!-- Total consolidado (aparece só com 2+ pessoas selecionadas) -->
+      <section id="secao-total-geral" class="card hidden">
+        <h2>Total geral (<span id="total-geral-nomes"></span>)</h2>
+        <div class="resumo-inline">
+          <div><span class="label">Entrada</span><span id="geral-entrada" class="valor entrada">R$ 0,00</span></div>
+          <div><span class="label">Saída</span><span id="geral-saida" class="valor saida">R$ 0,00</span></div>
+          <div><span class="label">Total</span><span id="geral-total" class="valor">R$ 0,00</span></div>
         </div>
       </section>
 
-      <!-- Filtro por pessoas -->
-      <section class="card">
-        <h2>Filtrar por pessoas</h2>
-        <p class="hint">Se nenhuma estiver selecionada, considera todos os lançamentos. Caso contrário, considera lançamentos que contenham <strong>qualquer</strong> pessoa selecionada.</p>
-        <div id="filtro-pessoas" class="chips"></div>
-      </section>
-
-      <!-- Formulário de lançamento -->
-      <section class="card">
-        <h2>Novo lançamento</h2>
-        <form id="form-lancamento" class="grid-form">
-          <label>
-            Descrição
-            <input type="text" id="descricao" required />
-          </label>
-          <label>
-            Valor (R$)
-            <input type="number" id="valor" step="0.01" min="0.01" required />
-          </label>
-          <label>
-            Parcelas
-            <input type="number" id="parcelas" min="1" value="1" required />
-          </label>
-          <label>
-            Tipo
-            <select id="tipo">
-              <option value="entrada">Entrada</option>
-              <option value="saida">Saída</option>
-            </select>
-          </label>
-          <div class="full">
-            <span class="label-block">Pessoas envolvidas</span>
-            <div id="pessoas-lancamento" class="chips"></div>
-          </div>
-          <button type="submit" class="full">Salvar lançamento</button>
-        </form>
-      </section>
-
-      <!-- Lista de lançamentos -->
-      <section class="card">
-        <h2>Lançamentos</h2>
-        <div class="table-wrap">
-          <table id="tabela-lancamentos">
-            <thead>
-              <tr>
-                <th>Descrição</th>
-                <th>Tipo</th>
-                <th>Pessoas</th>
-                <th>Parcelas</th>
-                <th class="text-right">Valor</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </section>
+      <!-- Tabelas por pessoa -->
+      <div id="tabelas-pessoas"></div>
 
     </div>
   </main>
