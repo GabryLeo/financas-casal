@@ -1,0 +1,212 @@
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #fff;
+  color: #000;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px 16px 60px;
+}
+
+h1 {
+  margin: 8px 0 20px;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.hidden { display: none; }
+
+.card {
+  background: #000;
+  color: #fff;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.card .hint {
+  color: #ccc;
+  font-size: 13px;
+  margin: 0 0 10px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.row input {
+  flex: 1 1 200px;
+}
+
+/* Inputs */
+input, select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #333;
+  background: #111;
+  color: #fff;
+  font-size: 15px;
+  outline: none;
+}
+input::placeholder { color: #888; }
+input:focus, select:focus { border-color: #fff; }
+
+/* Botões */
+button {
+  background: #fff;
+  color: #000;
+  border: none;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform .05s ease, opacity .2s ease;
+}
+button:hover { opacity: .9; }
+button:active { transform: scale(.98); }
+
+/* Resumo (big numbers) */
+.resumo {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.card.big {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 110px;
+}
+.card.big .label {
+  color: #bbb;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: 6px;
+}
+.card.big .valor {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.valor.entrada { color: #16c784; }
+.valor.saida   { color: #ff4d4f; }
+
+/* Chips */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.chip {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid #444;
+  background: #111;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+}
+.chip.active {
+  background: #fff;
+  color: #000;
+  border-color: #fff;
+}
+
+/* Formulário em grid */
+.grid-form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.grid-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  color: #ccc;
+  gap: 6px;
+}
+.grid-form .full { grid-column: 1 / -1; }
+.label-block {
+  display: block;
+  font-size: 13px;
+  color: #ccc;
+  margin-bottom: 6px;
+}
+
+/* Tabela */
+.table-wrap {
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #fff;
+  font-size: 14px;
+}
+th, td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid #222;
+  vertical-align: middle;
+}
+th {
+  color: #bbb;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.text-right { text-align: right; }
+
+td .tipo-entrada { color: #16c784; font-weight: 700; }
+td .tipo-saida   { color: #ff4d4f; font-weight: 700; }
+td .valor-entrada { color: #16c784; font-weight: 700; }
+td .valor-saida   { color: #ff4d4f; font-weight: 700; }
+
+.btn-trash {
+  background: transparent;
+  color: #fff;
+  border: 1px solid #444;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.btn-trash:hover { background: #222; }
+
+.empty {
+  text-align: center;
+  padding: 18px;
+  color: #999;
+}
+
+@media (max-width: 640px) {
+  .resumo { grid-template-columns: 1fr; }
+  .grid-form { grid-template-columns: 1fr; }
+  .card.big .valor { font-size: 24px; }
+  h1 { font-size: 24px; }
+}
