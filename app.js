@@ -25,18 +25,55 @@ async function apiPost(action, data) {
   });
 }
 
+// Normaliza os dados vindos da planilha (protege contra valores nulos/estranhos)
+function normalizarDados(data) {
+  const pessoas = (data.pessoas || [])
+    .filter(p => p && p.id)
+    .map(p => ({
+      id: String(p.id),
+      nome: String(p.nome || '').trim()
+    }));
+
+  const lancamentos = (data.lancamentos || [])
+    .filter(l => l && l.id)
+    .map(l => {
+      let pessoasIds = l.pessoasIds;
+      if (Array.isArray(pessoasIds)) {
+        pessoasIds = pessoasIds.map(x => String(x)).filter(Boolean);
+      } else if (typeof pessoasIds === 'string') {
+        pessoasIds = pessoasIds.split(',').map(x => x.trim()).filter(Boolean);
+      } else {
+        pessoasIds = [];
+      }
+      return {
+        id: String(l.id),
+        descricao: String(l.descricao || ''),
+        valor: Number(l.valor) || 0,
+        parcelas: Math.max(1, parseInt(l.parcelas, 10) || 1),
+        tipo: l.tipo === 'entrada' ? 'entrada' : 'saida',
+        pessoasIds
+      };
+    });
+
+  return { pessoas, lancamentos };
+}
+
 async function carregarDados() {
   try {
     setLoading(true);
-    const data = await apiGet();
-    state.pessoas = data.pessoas || [];
-    state.lancamentos = data.lancamentos || [];
-    // Remove filtros de pessoas que não existem mais
+    const raw = await apiGet();
+    console.log('Dados brutos da API:', raw);
+    const data = normalizarDados(raw);
+    console.log('Dados normalizados:', data);
+
+    state.pessoas = data.pessoas;
+    state.lancamentos = data.lancamentos;
     state.filtroPessoasIds = state.filtroPessoasIds.filter(id =>
       state.pessoas.some(p => p.id === id)
     );
     render();
   } catch (e) {
+    console.error('ERRO completo ao carregar:', e);
     alert('Erro ao carregar dados: ' + e.message);
   } finally {
     setLoading(false);
@@ -49,7 +86,7 @@ function setLoading(on) {
 }
 
 // ---------- Utils ----------
-const fmtBRL = (n) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const fmtBRL = (n) => (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 function uid() {
   if (crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -62,14 +99,12 @@ function getPessoaNome(id) {
 }
 
 // ---------- Cálculos ----------
-// Filtro "qualquer": lançamento aparece se tem pelo menos 1 pessoa selecionada
 function lancamentosComQualquer(ids) {
   if (!ids.length) return state.lancamentos;
   const set = new Set(ids);
   return state.lancamentos.filter(l => l.pessoasIds.some(pid => set.has(pid)));
 }
 
-// Filtro "todas": lançamento aparece só se tem TODAS as pessoas selecionadas
 function lancamentosComTodas(ids) {
   if (!ids.length) return [];
   return state.lancamentos.filter(l =>
@@ -88,24 +123,29 @@ function somarTotais(lista) {
 
 // ---------- Render ----------
 function render() {
-  renderListaPessoas();
-  renderFiltroPessoas();
-  renderPessoasLancamento();
-  renderResumo();
-  renderSecaoConjunto();
-  renderLancamentos();
-  toggleApp();
+  try {
+    renderListaPessoas();
+    renderFiltroPessoas();
+    renderPessoasLancamento();
+    renderResumo();
+    renderSecaoConjunto();
+    renderLancamentos();
+    toggleApp();
+  } catch (e) {
+    console.error('Erro ao renderizar:', e);
+  }
 }
 
 function toggleApp() {
   const app = document.getElementById('app');
+  if (!app) return;
   if (state.pessoas.length > 0) app.classList.remove('hidden');
   else app.classList.add('hidden');
 }
 
-// Bloco "Adicionar pessoa" — com botão X pra remover
 function renderListaPessoas() {
   const container = document.getElementById('lista-pessoas');
+  if (!container) return;
   container.innerHTML = '';
   if (state.pessoas.length === 0) {
     container.innerHTML = '<span style="color:#999;font-size:13px;">Nenhuma pessoa cadastrada.</span>';
@@ -131,6 +171,7 @@ function renderListaPessoas() {
 
 function renderFiltroPessoas() {
   const container = document.getElementById('filtro-pessoas');
+  if (!container) return;
   container.innerHTML = '';
   for (const p of state.pessoas) {
     const chip = document.createElement('span');
@@ -151,6 +192,7 @@ function renderFiltroPessoas() {
 
 function renderPessoasLancamento() {
   const container = document.getElementById('pessoas-lancamento');
+  if (!container) return;
   container.innerHTML = '';
   state.formPessoasIds = state.formPessoasIds.filter(id =>
     state.pessoas.some(p => p.id === id)
@@ -169,50 +211,55 @@ function renderPessoasLancamento() {
   }
 }
 
-// Big numbers gerais — usa filtro "qualquer"
 function renderResumo() {
+  const elEntrada = document.getElementById('total-entrada');
+  const elSaida = document.getElementById('total-saida');
+  const elTotal = document.getElementById('total-geral');
+  if (!elEntrada || !elSaida || !elTotal) return;
+
   const lista = lancamentosComQualquer(state.filtroPessoasIds);
   const { entrada, saida, total } = somarTotais(lista);
-  document.getElementById('total-entrada').textContent = fmtBRL(entrada);
-  document.getElementById('total-saida').textContent = fmtBRL(saida);
-  const elTotal = document.getElementById('total-geral');
+  elEntrada.textContent = fmtBRL(entrada);
+  elSaida.textContent = fmtBRL(saida);
   elTotal.textContent = fmtBRL(total);
   elTotal.classList.remove('entrada', 'saida');
   if (total > 0) elTotal.classList.add('entrada');
   else if (total < 0) elTotal.classList.add('saida');
 }
 
-// Seção "Em conjunto" só aparece com 2+ pessoas selecionadas
 function renderSecaoConjunto() {
   const secao = document.getElementById('secao-conjunto');
+  if (!secao) return;
   const ids = state.filtroPessoasIds;
   if (ids.length < 2) {
     secao.classList.add('hidden');
     return;
   }
   secao.classList.remove('hidden');
-  const nomes = ids.map(getPessoaNome).join(' + ');
-  document.getElementById('conjunto-nomes').textContent = nomes;
+  const elNomes = document.getElementById('conjunto-nomes');
+  const elE = document.getElementById('conjunto-entrada');
+  const elS = document.getElementById('conjunto-saida');
+  const elT = document.getElementById('conjunto-total');
+  if (!elNomes || !elE || !elS || !elT) return;
 
+  elNomes.textContent = ids.map(getPessoaNome).join(' + ');
   const lista = lancamentosComTodas(ids);
   const { entrada, saida, total } = somarTotais(lista);
-  document.getElementById('conjunto-entrada').textContent = fmtBRL(entrada);
-  document.getElementById('conjunto-saida').textContent = fmtBRL(saida);
-  const elT = document.getElementById('conjunto-total');
+  elE.textContent = fmtBRL(entrada);
+  elS.textContent = fmtBRL(saida);
   elT.textContent = fmtBRL(total);
   elT.classList.remove('entrada', 'saida');
   if (total > 0) elT.classList.add('entrada');
   else if (total < 0) elT.classList.add('saida');
 }
 
-// Lista com agrupamento dependendo do filtro
 function renderLancamentos() {
   const container = document.getElementById('lista-lancamentos');
   const titulo = document.getElementById('titulo-lancamentos');
+  if (!container || !titulo) return;
   container.innerHTML = '';
   const ids = state.filtroPessoasIds;
 
-  // Caso 1: sem filtro → mostra todos em ordem normal
   if (ids.length === 0) {
     titulo.textContent = 'Lançamentos';
     const lista = [...state.lancamentos].reverse();
@@ -224,7 +271,6 @@ function renderLancamentos() {
     return;
   }
 
-  // Caso 2: 1 pessoa selecionada → destaca só os dela
   if (ids.length === 1) {
     const nome = getPessoaNome(ids[0]);
     titulo.textContent = 'Lançamentos de ' + nome;
@@ -237,7 +283,6 @@ function renderLancamentos() {
     return;
   }
 
-  // Caso 3: 2+ pessoas → agrupa: "Em conjunto" primeiro, depois individuais de cada
   titulo.textContent = 'Lançamentos filtrados';
 
   const conjuntos = lancamentosComTodas(ids);
@@ -251,7 +296,6 @@ function renderLancamentos() {
     [...conjuntos].reverse().forEach(l => container.appendChild(criarItem(l)));
   }
 
-  // Individuais: cada pessoa selecionada, lançamentos que TEM ela mas NÃO é de todas
   for (const pid of ids) {
     const individuais = state.lancamentos.filter(l =>
       l.pessoasIds.includes(pid) && !idsConjunto.has(l.id)
@@ -269,10 +313,11 @@ function renderLancamentos() {
   }
 }
 
-// Cria um item da lista
 function criarItem(l) {
   const total = l.valor * l.parcelas;
-  const pessoasNomes = l.pessoasIds.map(getPessoaNome).join(' • ') || 'Sem pessoas';
+  const pessoasNomes = l.pessoasIds.length
+    ? l.pessoasIds.map(getPessoaNome).join(' • ')
+    : 'Sem pessoas';
   const parcelasTxt = l.parcelas > 1 ? ` • ${l.parcelas}x de ${fmtBRL(l.valor)}` : '';
   const tipoLabel = l.tipo === 'entrada' ? 'Entrada' : 'Saída';
   const sinal = l.tipo === 'entrada' ? '+' : '−';
@@ -353,35 +398,42 @@ async function removerLancamento(id) {
 
 // ---------- Bind ----------
 function bindEvents() {
-  document.getElementById('form-pessoa').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const input = document.getElementById('nome-pessoa');
-    adicionarPessoa(input.value);
-    input.value = '';
-    input.focus();
-  });
+  const formPessoa = document.getElementById('form-pessoa');
+  const formLanc = document.getElementById('form-lancamento');
 
-  document.getElementById('form-lancamento').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const descricao = document.getElementById('descricao').value;
-    const valor = parseFloat(document.getElementById('valor').value);
-    const parcelas = parseInt(document.getElementById('parcelas').value, 10) || 1;
-    const tipo = document.getElementById('tipo').value;
-
-    if (!descricao.trim()) return alert('Descrição é obrigatória.');
-    if (!(valor > 0)) return alert('Valor deve ser maior que zero.');
-    if (parcelas < 1) return alert('Parcelas deve ser ≥ 1.');
-
-    adicionarLancamento({
-      descricao, valor, parcelas, tipo,
-      pessoasIds: state.formPessoasIds
+  if (formPessoa) {
+    formPessoa.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = document.getElementById('nome-pessoa');
+      adicionarPessoa(input.value);
+      input.value = '';
+      input.focus();
     });
+  }
 
-    e.target.reset();
-    document.getElementById('parcelas').value = 1;
-    state.formPessoasIds = [];
-    renderPessoasLancamento();
-  });
+  if (formLanc) {
+    formLanc.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const descricao = document.getElementById('descricao').value;
+      const valor = parseFloat(document.getElementById('valor').value);
+      const parcelas = parseInt(document.getElementById('parcelas').value, 10) || 1;
+      const tipo = document.getElementById('tipo').value;
+
+      if (!descricao.trim()) return alert('Descrição é obrigatória.');
+      if (!(valor > 0)) return alert('Valor deve ser maior que zero.');
+      if (parcelas < 1) return alert('Parcelas deve ser ≥ 1.');
+
+      adicionarLancamento({
+        descricao, valor, parcelas, tipo,
+        pessoasIds: state.formPessoasIds
+      });
+
+      e.target.reset();
+      document.getElementById('parcelas').value = 1;
+      state.formPessoasIds = [];
+      renderPessoasLancamento();
+    });
+  }
 
   setInterval(carregarDados, 15000);
   window.addEventListener('focus', carregarDados);
