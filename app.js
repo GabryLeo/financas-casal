@@ -6,10 +6,10 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxO7OyPb4w7VXs_vfvg1tud
 
 let state = {
   pessoas: [],
-  lancamentos: [],       // { id, descricao, valor, parcelas, tipo, pessoasIds, mesInicial }
+  lancamentos: [],
   filtroPessoasIds: [],
-  filtroMeses: [],       // ex: ["2025-01", "2025-02"]
-  rascunhos: {}          // rascunho do form de cada pessoa
+  filtroMeses: [],
+  rascunhos: {}
 };
 
 let usuarioDigitando = false;
@@ -47,9 +47,7 @@ function normalizarDados(data) {
       else pessoasIds = [];
 
       let mesInicial = String(l.mesInicial || '').trim();
-      // Garante formato YYYY-MM
       if (!/^\d{4}-\d{2}$/.test(mesInicial)) {
-        // Se veio em outro formato ou vazio, tenta extrair ou usa atual
         if (mesInicial instanceof Date) {
           mesInicial = `${mesInicial.getFullYear()}-${String(mesInicial.getMonth() + 1).padStart(2, '0')}`;
         } else {
@@ -128,7 +126,6 @@ function mesLabelCurto(ym) {
   return `${NOMES_MESES[parseInt(m, 10) - 1].slice(0, 3)}/${y.slice(2)}`;
 }
 
-// Soma meses: "2025-05" + 2 = "2025-07"
 function somarMes(ym, n) {
   const [y, m] = ym.split('-').map(Number);
   const d = new Date(y, m - 1 + n, 1);
@@ -140,7 +137,6 @@ function compararMes(a, b) {
 }
 
 // ---------- Expansão de parcelas ----------
-// Retorna array de "ocorrências" (cada parcela é uma ocorrência) a partir dos lançamentos
 function expandirParcelas(lancamentos) {
   const ocorrencias = [];
   for (const l of lancamentos) {
@@ -162,10 +158,8 @@ function expandirParcelas(lancamentos) {
   return ocorrencias;
 }
 
-// Retorna todas as ocorrências, aplicando filtros de pessoa
 function ocorrenciasFiltradas() {
   let lancs = state.lancamentos;
-  // Filtro de pessoas = união: lançamentos que envolvem pelo menos uma selecionada
   if (state.filtroPessoasIds.length) {
     const set = new Set(state.filtroPessoasIds);
     lancs = lancs.filter(l => l.pessoasIds.some(pid => set.has(pid)));
@@ -173,14 +167,12 @@ function ocorrenciasFiltradas() {
   return expandirParcelas(lancs);
 }
 
-// Retorna meses únicos ordenados que existem nas ocorrências (considerando pessoa filtrada ou não)
 function mesesDisponiveis() {
   const ocorrencias = expandirParcelas(state.lancamentos);
   const set = new Set(ocorrencias.map(o => o.mes));
   return [...set].sort(compararMes);
 }
 
-// Soma um array de ocorrências
 function somarOcorrencias(ocorrencias) {
   let entrada = 0, saida = 0;
   for (const o of ocorrencias) {
@@ -276,7 +268,6 @@ function renderListaMeses() {
     container.appendChild(chip);
   }
 
-  // Botão "Limpar" se houver seleção
   if (state.filtroMeses.length) {
     const btn = document.createElement('button');
     btn.textContent = 'Limpar';
@@ -288,7 +279,6 @@ function renderListaMeses() {
   }
 }
 
-// Ocorrências filtradas por pessoa E por meses (se houver filtro)
 function ocorrenciasVisiveis() {
   let ocs = ocorrenciasFiltradas();
   if (state.filtroMeses.length) {
@@ -319,7 +309,6 @@ function renderTotalGeral() {
   if (total > 0) elT.classList.add('entrada');
   else if (total < 0) elT.classList.add('saida');
 
-  // Comparativo geral (considera só o conjunto filtrado de pessoas)
   const wrapComp = document.getElementById('geral-comparativo');
   wrapComp.innerHTML = '';
   if (state.filtroMeses.length >= 2) {
@@ -335,7 +324,6 @@ function renderTabelasPessoas() {
     ? state.filtroPessoasIds
     : state.pessoas.map(p => p.id);
 
-  // Preserva foco
   const ativo = document.activeElement;
   const ativoInfo = ativo && ativo.dataset && ativo.dataset.pessoa
     ? { pessoaId: ativo.dataset.pessoa, campo: ativo.dataset.campo, pos: ativo.selectionStart }
@@ -364,7 +352,6 @@ function criarTabelaPessoa(pid) {
   const p = state.pessoas.find(x => x.id === pid);
   if (!p) return document.createElement('div');
 
-  // Ocorrências só dessa pessoa (aplicando filtro de meses)
   const todasOcsPessoa = expandirParcelas(
     state.lancamentos.filter(l => l.pessoasIds.includes(pid))
   );
@@ -377,7 +364,6 @@ function criarTabelaPessoa(pid) {
   const section = document.createElement('section');
   section.className = 'card tabela-pessoa';
 
-  // Cabeçalho + resumo
   const cabecalho = document.createElement('div');
   cabecalho.innerHTML = `
     <h2>${escapeHtml(p.nome)}</h2>
@@ -389,9 +375,9 @@ function criarTabelaPessoa(pid) {
   `;
   section.appendChild(cabecalho);
 
-  // Form
+  // Rascunho (mantém mês e tipo entre adições; descrição/valor/parcelas resetam)
   const rasc = state.rascunhos[pid] || {
-    descricao: '', valor: '', parcelas: '1', tipo: 'saida', mes: mesAtual()
+    descricao: '', valor: '', parcelas: '', tipo: 'saida', mes: mesAtual()
   };
   if (!rasc.mes) rasc.mes = mesAtual();
 
@@ -413,11 +399,11 @@ function criarTabelaPessoa(pid) {
     el.addEventListener('focus', () => { usuarioDigitando = true; });
     el.addEventListener('blur', () => { usuarioDigitando = false; });
     el.addEventListener('input', () => {
-      if (!state.rascunhos[pid]) state.rascunhos[pid] = { descricao:'', valor:'', parcelas:'1', tipo:'saida', mes: mesAtual() };
+      if (!state.rascunhos[pid]) state.rascunhos[pid] = { descricao:'', valor:'', parcelas:'', tipo:'saida', mes: mesAtual() };
       state.rascunhos[pid][el.dataset.campo] = el.value;
     });
     el.addEventListener('change', () => {
-      if (!state.rascunhos[pid]) state.rascunhos[pid] = { descricao:'', valor:'', parcelas:'1', tipo:'saida', mes: mesAtual() };
+      if (!state.rascunhos[pid]) state.rascunhos[pid] = { descricao:'', valor:'', parcelas:'', tipo:'saida', mes: mesAtual() };
       state.rascunhos[pid][el.dataset.campo] = el.value;
     });
   });
@@ -439,12 +425,19 @@ function criarTabelaPessoa(pid) {
       descricao, valor, parcelas, tipo,
       pessoasIds: [pid], mesInicial: mes
     });
-    state.rascunhos[pid] = { descricao:'', valor:'', parcelas:'1', tipo:'saida', mes: mesAtual() };
+
+    // Zera descrição, valor e parcelas. Mantém mês e tipo.
+    state.rascunhos[pid] = {
+      descricao: '',
+      valor: '',
+      parcelas: '',
+      tipo: tipo,
+      mes: mes
+    };
   });
 
   section.appendChild(form);
 
-  // Tabela agrupada por mês
   const wrap = document.createElement('div');
   wrap.className = 'table-wrap';
 
@@ -452,7 +445,6 @@ function criarTabelaPessoa(pid) {
     wrap.innerHTML = '<div class="empty">Nenhum lançamento.</div>';
   } else {
     const atual = mesAtual();
-    // Agrupa por mês
     const porMes = {};
     for (const o of ocsPessoaFiltradas) {
       if (!porMes[o.mes]) porMes[o.mes] = [];
@@ -520,7 +512,6 @@ function criarTabelaPessoa(pid) {
 
   section.appendChild(wrap);
 
-  // Comparativo (só dessa pessoa, usando ocorrências da pessoa sem filtro de mês)
   if (state.filtroMeses.length >= 2) {
     section.appendChild(criarComparativo(todasOcsPessoa, state.filtroMeses));
   }
@@ -528,7 +519,6 @@ function criarTabelaPessoa(pid) {
   return section;
 }
 
-// Cria cards de comparativo
 function criarComparativo(ocorrencias, meses) {
   const wrap = document.createElement('div');
   wrap.className = 'comparativo-wrap';
@@ -543,7 +533,6 @@ function criarComparativo(ocorrencias, meses) {
 
   const mesesOrd = [...meses].sort(compararMes);
 
-  // Card por mês
   const totaisPorMes = {};
   for (const m of mesesOrd) {
     const ocs = ocorrencias.filter(o => o.mes === m);
@@ -560,7 +549,6 @@ function criarComparativo(ocorrencias, meses) {
     grid.appendChild(card);
   }
 
-  // Card de diferença (primeiro vs último)
   if (mesesOrd.length >= 2) {
     const primeiro = mesesOrd[0];
     const ultimo = mesesOrd[mesesOrd.length - 1];
@@ -578,7 +566,6 @@ function criarComparativo(ocorrencias, meses) {
     grid.appendChild(card);
   }
 
-  // Card de soma do período
   const somaOcs = ocorrencias.filter(o => meses.includes(o.mes));
   const soma = somarOcorrencias(somaOcs);
   const cardSoma = document.createElement('div');
