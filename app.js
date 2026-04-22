@@ -375,11 +375,31 @@ function criarTabelaPessoa(pid) {
   `;
   section.appendChild(cabecalho);
 
-  // Rascunho (mantém mês e tipo entre adições; descrição/valor/parcelas resetam)
-  const rasc = state.rascunhos[pid] || {
-    descricao: '', valor: '', parcelas: '', tipo: 'saida', mes: mesAtual()
-  };
-  if (!rasc.mes) rasc.mes = mesAtual();
+  // Garante rascunho inicializado
+  if (!state.rascunhos[pid]) {
+    state.rascunhos[pid] = { descricao: '', valor: '', parcelas: '', tipo: 'saida', mes: mesAtual() };
+  }
+  const rasc = state.rascunhos[pid];
+  if (!rasc.mes || !/^\d{4}-\d{2}$/.test(rasc.mes)) rasc.mes = mesAtual();
+
+  // Gera opções de mês/ano
+  const hoje = new Date();
+  const anoAtual = hoje.getFullYear();
+  const anos = [];
+  for (let y = anoAtual - 3; y <= anoAtual + 5; y++) anos.push(y);
+
+  const [rAno, rMes] = rasc.mes.split('-');
+
+  const opcoesMes = NOMES_MESES.map((nm, i) => {
+    const mNum = String(i + 1).padStart(2, '0');
+    const sel = mNum === rMes ? 'selected' : '';
+    return `<option value="${mNum}" ${sel}>${nm}</option>`;
+  }).join('');
+
+  const opcoesAno = anos.map(y => {
+    const sel = String(y) === rAno ? 'selected' : '';
+    return `<option value="${y}" ${sel}>${y}</option>`;
+  }).join('');
 
   const form = document.createElement('form');
   form.className = 'form-lancamento';
@@ -387,7 +407,8 @@ function criarTabelaPessoa(pid) {
     <input type="text" placeholder="Descrição" data-pessoa="${pid}" data-campo="descricao" value="${escapeHtml(rasc.descricao)}" />
     <input type="number" step="0.01" min="0.01" placeholder="Valor" data-pessoa="${pid}" data-campo="valor" value="${escapeHtml(rasc.valor)}" />
     <input type="number" min="1" placeholder="Parcelas" data-pessoa="${pid}" data-campo="parcelas" value="${escapeHtml(rasc.parcelas)}" />
-    <input type="month" data-pessoa="${pid}" data-campo="mes" value="${escapeHtml(rasc.mes)}" title="Mês inicial" />
+    <select data-pessoa="${pid}" data-campo="mesNum" title="Mês">${opcoesMes}</select>
+    <select data-pessoa="${pid}" data-campo="anoNum" title="Ano">${opcoesAno}</select>
     <select data-pessoa="${pid}" data-campo="tipo">
       <option value="saida" ${rasc.tipo === 'saida' ? 'selected' : ''}>Saída</option>
       <option value="entrada" ${rasc.tipo === 'entrada' ? 'selected' : ''}>Entrada</option>
@@ -395,16 +416,28 @@ function criarTabelaPessoa(pid) {
     <button type="submit">Adicionar</button>
   `;
 
+  function atualizarMesDoRascunho() {
+    const mSel = form.querySelector('[data-campo="mesNum"]').value;
+    const aSel = form.querySelector('[data-campo="anoNum"]').value;
+    state.rascunhos[pid].mes = `${aSel}-${mSel}`;
+  }
+
   form.querySelectorAll('input, select').forEach(el => {
     el.addEventListener('focus', () => { usuarioDigitando = true; });
     el.addEventListener('blur', () => { usuarioDigitando = false; });
     el.addEventListener('input', () => {
-      if (!state.rascunhos[pid]) state.rascunhos[pid] = { descricao:'', valor:'', parcelas:'', tipo:'saida', mes: mesAtual() };
-      state.rascunhos[pid][el.dataset.campo] = el.value;
+      if (el.dataset.campo === 'mesNum' || el.dataset.campo === 'anoNum') {
+        atualizarMesDoRascunho();
+      } else {
+        state.rascunhos[pid][el.dataset.campo] = el.value;
+      }
     });
     el.addEventListener('change', () => {
-      if (!state.rascunhos[pid]) state.rascunhos[pid] = { descricao:'', valor:'', parcelas:'', tipo:'saida', mes: mesAtual() };
-      state.rascunhos[pid][el.dataset.campo] = el.value;
+      if (el.dataset.campo === 'mesNum' || el.dataset.campo === 'anoNum') {
+        atualizarMesDoRascunho();
+      } else {
+        state.rascunhos[pid][el.dataset.campo] = el.value;
+      }
     });
   });
 
