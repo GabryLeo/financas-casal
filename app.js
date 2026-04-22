@@ -375,14 +375,13 @@ function criarTabelaPessoa(pid) {
   `;
   section.appendChild(cabecalho);
 
-  // Garante rascunho inicializado
+  // Rascunho (garante inicialização)
   if (!state.rascunhos[pid]) {
     state.rascunhos[pid] = { descricao: '', valor: '', parcelas: '', tipo: 'saida', mes: mesAtual() };
   }
   const rasc = state.rascunhos[pid];
   if (!rasc.mes || !/^\d{4}-\d{2}$/.test(rasc.mes)) rasc.mes = mesAtual();
 
-  // Gera opções de mês/ano
   const hoje = new Date();
   const anoAtual = hoje.getFullYear();
   const anos = [];
@@ -392,30 +391,164 @@ function criarTabelaPessoa(pid) {
 
   const opcoesMes = NOMES_MESES.map((nm, i) => {
     const mNum = String(i + 1).padStart(2, '0');
-    const sel = mNum === rMes ? 'selected' : '';
-    return `<option value="${mNum}" ${sel}>${nm}</option>`;
+    return `<option value="${mNum}">${nm}</option>`;
   }).join('');
 
-  const opcoesAno = anos.map(y => {
-    const sel = String(y) === rAno ? 'selected' : '';
-    return `<option value="${y}" ${sel}>${y}</option>`;
-  }).join('');
+  const opcoesAno = anos.map(y => `<option value="${y}">${y}</option>`).join('');
 
   const form = document.createElement('form');
   form.className = 'form-lancamento';
   form.innerHTML = `
-    <input type="text" placeholder="Descrição" data-pessoa="${pid}" data-campo="descricao" value="${escapeHtml(rasc.descricao)}" />
-    <input type="number" step="0.01" min="0.01" placeholder="Valor" data-pessoa="${pid}" data-campo="valor" value="${escapeHtml(rasc.valor)}" />
-    <input type="number" min="1" placeholder="Parcelas" data-pessoa="${pid}" data-campo="parcelas" value="${escapeHtml(rasc.parcelas)}" />
+    <input type="text" placeholder="Descrição" data-pessoa="${pid}" data-campo="descricao" />
+    <input type="number" step="0.01" min="0.01" placeholder="Valor" data-pessoa="${pid}" data-campo="valor" />
+    <input type="number" min="1" placeholder="Parcelas" data-pessoa="${pid}" data-campo="parcelas" />
     <select data-pessoa="${pid}" data-campo="mesNum" title="Mês">${opcoesMes}</select>
     <select data-pessoa="${pid}" data-campo="anoNum" title="Ano">${opcoesAno}</select>
     <select data-pessoa="${pid}" data-campo="tipo">
-      <option value="saida" ${rasc.tipo === 'saida' ? 'selected' : ''}>Saída</option>
-      <option value="entrada" ${rasc.tipo === 'entrada' ? 'selected' : ''}>Entrada</option>
+      <option value="saida">Saída</option>
+      <option value="entrada">Entrada</option>
     </select>
     <button type="submit">Adicionar</button>
   `;
 
+  // FORÇA os valores via JS (antes de adicionar listeners)
+  form.querySelector('[data-campo="descricao"]').value = rasc.descricao || '';
+  form.querySelector('[data-campo="valor"]').value = rasc.valor || '';
+  form.querySelector('[data-campo="parcelas"]').value = rasc.parcelas || '';
+  form.querySelector('[data-campo="mesNum"]').value = rMes;
+  form.querySelector('[data-campo="anoNum"]').value = rAno;
+  form.querySelector('[data-campo="tipo"]').value = rasc.tipo || 'saida';
+
+  // AGORA adiciona os listeners (depois de setar os valores)
+  form.querySelectorAll('input, select').forEach(el => {
+    el.addEventListener('focus', () => { usuarioDigitando = true; });
+    el.addEventListener('blur', () => { usuarioDigitando = false; });
+
+    const atualizar = () => {
+      const campo = el.dataset.campo;
+      if (campo === 'mesNum' || campo === 'anoNum') {
+        const mSel = form.querySelector('[data-campo="mesNum"]').value;
+        const aSel = form.querySelector('[data-campo="anoNum"]').value;
+        state.rascunhos[pid].mes = `${aSel}-${mSel}`;
+      } else {
+        state.rascunhos[pid][campo] = el.value;
+      }
+    };
+
+    el.addEventListener('input', atualizar);
+    el.addEventListener('change', atualizar);
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const r = state.rascunhos[pid] || {};
+    const descricao = (r.descricao || '').trim();
+    const valor = parseFloat(r.valor);
+    const parcelas = parseInt(r.parcelas || 1, 10) || 1;
+    const tipo = r.tipo || 'saida';
+    const mes = r.mes || mesAtual();
+
+    if (!descricao) return alert('Descrição é obrigatória.');
+    if (!(valor > 0)) return alert('Valor deve ser maior que zero.');
+    if (!/^\d{4}-\d{2}$/.test(mes)) return alert('Mês inválido.');
+
+    adicionarLancamento({
+      descricao, valor, parcelas, tipo,
+      pessoasIds: [pid], mesInicial: mes
+    });
+
+    // Zera descrição, valor e parcelas. Mantém mês e tipo.
+    state.rascunhos[pid] = {
+      descricao: '',
+      valor: '',
+      parcelas: '',
+      tipo: tipo,
+      mes: mes
+    };
+  });
+
+  section.appendChild(form);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'table-wrap';
+
+  if (!ocsPessoaFiltradas.length) {
+    wrap.innerHTML = '<div class="empty">Nenhum lançamento.</div>';
+  } else {
+    const atual = mesAtual();
+    const porMes = {};
+    for (const o of ocsPessoaFiltradas) {
+      if (!porMes[o.mes]) porMes[o.mes] = [];
+      porMes[o.mes].push(o);
+    }
+    const mesesOrdenados = Object.keys(porMes).sort(compararMes);
+
+    for (const m of mesesOrdenados) {
+      const titulo = document.createElement('div');
+      titulo.className = 'grupo-mes' + (m > atual ? ' futuro' : '');
+      titulo.textContent = mesLabel(m) + (m > atual ? ' (futuro)' : '');
+      wrap.appendChild(titulo);
+
+      const table = document.createElement('table');
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th>Descrição</th>
+            <th>Tipo</th>
+            <th>Parcela</th>
+            <th class="text-right">Valor</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      `;
+      const tbody = table.querySelector('tbody');
+
+      for (const o of porMes[m]) {
+        const tipoClass = o.tipo === 'entrada' ? 'tipo-entrada' : 'tipo-saida';
+        const valorClass = o.tipo === 'entrada' ? 'valor-entrada' : 'valor-saida';
+        const sinal = o.tipo === 'entrada' ? '+' : '−';
+        const parcelaTxt = o.totalParcelas > 1
+          ? `${o.parcelaAtual}/${o.totalParcelas}`
+          : '—';
+        const outras = o.pessoasIds.filter(x => x !== pid).map(getPessoaNome);
+        const subLeg = outras.length
+          ? `<span class="pessoas-sub">com ${escapeHtml(outras.join(', '))}</span>`
+          : '';
+        const futuroClass = m > atual ? ' futuro-row' : '';
+        const tagFuturo = m > atual ? '<span class="tag-futuro">Futuro</span>' : '';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="${futuroClass}">
+            ${escapeHtml(o.descricao)}${tagFuturo}
+            ${subLeg}
+          </td>
+          <td class="${futuroClass}"><span class="${tipoClass}">${o.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span></td>
+          <td class="${futuroClass}">${parcelaTxt}</td>
+          <td class="text-right ${futuroClass}"><span class="${valorClass}">${sinal} ${fmtBRL(o.valor)}</span></td>
+          <td class="text-right ${futuroClass}"><button class="btn-trash" title="Remover lançamento inteiro">🗑️</button></td>
+        `;
+        tr.querySelector('.btn-trash').onclick = () => {
+          if (confirm('Remover este lançamento? Se tiver parcelas, todas serão removidas.')) {
+            removerLancamento(o.lancamentoId);
+          }
+        };
+        tbody.appendChild(tr);
+      }
+
+      wrap.appendChild(table);
+    }
+  }
+
+  section.appendChild(wrap);
+
+  if (state.filtroMeses.length >= 2) {
+    section.appendChild(criarComparativo(todasOcsPessoa, state.filtroMeses));
+  }
+
+  return section;
+}
   function atualizarMesDoRascunho() {
     const mSel = form.querySelector('[data-campo="mesNum"]').value;
     const aSel = form.querySelector('[data-campo="anoNum"]').value;
