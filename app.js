@@ -214,7 +214,7 @@ function renderListaPessoas() {
   if (!container) return;
   container.innerHTML = '';
   if (state.pessoas.length === 0) {
-    container.innerHTML = '<span style="color:#999;font-size:13px;">Nenhuma pessoa cadastrada.</span>';
+    container.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">Nenhuma pessoa cadastrada.</span>';
     return;
   }
   for (const p of state.pessoas) {
@@ -259,7 +259,7 @@ function renderListaMeses() {
 
   const meses = mesesDisponiveis();
   if (!meses.length) {
-    container.innerHTML = '<span style="color:#999;font-size:13px;">Adicione lançamentos para ver os meses.</span>';
+    container.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">Adicione lançamentos para ver os meses.</span>';
     return;
   }
 
@@ -689,8 +689,26 @@ async function removerLancamento(id) {
   catch (e) { alert('Erro ao remover: ' + e.message); }
 }
 
+// ---------- Tema claro/escuro ----------
+function initTheme() {
+  const saved = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+
+  const btn = document.getElementById('theme-toggle');
+  if (btn) {
+    btn.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+    });
+  }
+}
+
 // ---------- Bind ----------
 function bindEvents() {
+  initTheme();
+
   const formPessoa = document.getElementById('form-pessoa');
   if (formPessoa) {
     formPessoa.addEventListener('submit', (e) => {
