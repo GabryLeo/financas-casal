@@ -8,6 +8,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
+  <script>
+    // Aplica tema ANTES do render pra não "piscar"
+    (function() {
+      try {
+        var t = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body>
   <!-- Background decorativo -->
@@ -21,8 +30,9 @@
     <header class="header-bar">
       <h1>Finanças<span class="dot">.</span></h1>
       <button id="theme-toggle" class="theme-toggle" type="button" title="Alternar tema" aria-label="Alternar tema">
-        <span class="icon-sun">☀️</span>
-        <span class="icon-moon">🌙</span>
+        <span class="toggle-thumb"></span>
+        <span class="toggle-icon sun" aria-hidden="true">☀️</span>
+        <span class="toggle-icon moon" aria-hidden="true">🌙</span>
       </button>
     </header>
 
