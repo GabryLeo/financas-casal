@@ -183,26 +183,3 @@ Copiar
 4. Clique em **"Commit changes"**
 
 O README vai aparecer automaticamente na página inicial do repositório, formatadinho e bonito! 🎨
-
----
-
-## Bônus (opcional)
-
-Se quiser deixar ainda mais profissional:
-
-### 1. Adicione um arquivo `apps-script.gs` no repositório
-Com o código do Apps Script pra quem quiser fazer fork do projeto conseguir configurar.
-
-### 2. Adicione uma screenshot
-Tira um print do app funcionando e salva como `screenshot.png` no repositório. Depois no README adiciona:
-
-markdown
-## 📸 Screenshot
-![App](screenshot.png)
-3. Adicione uma descrição curta no repositório
-No topo da página do repositório tem um ícone de engrenagem ⚙️ ao lado do nome. Clica lá e preenche:
-
-Description: "App de controle financeiro pra casal, com sincronização via Google Sheets"
-Website: cola o link do GitHub Pages
-
-Pronto, profissional! 🚀
