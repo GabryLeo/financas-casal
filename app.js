@@ -1,5 +1,5 @@
 // =============================================
-// Finanças do Casal — modernizado
+// Finanças do Casal — refresh silencioso
 // =============================================
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbxO7OyPb4w7VXs_vfvg1tudnMLRBmXU93AEw0b8Z_8iMj7GMGYsPIErzYpd_i4SIu_R/exec';
@@ -16,7 +16,36 @@ let state = {
   totalPositivoAnterior: null
 };
 
+// Controle de refresh silencioso
 let usuarioDigitando = false;
+let usuarioDigitandoTimeout = null;
+let lastDataHash = '';
+let renderPending = false;
+let jaRenderizouUmaVez = false;
+
+function marcarDigitando() {
+  usuarioDigitando = true;
+  if (usuarioDigitandoTimeout) clearTimeout(usuarioDigitandoTimeout);
+}
+
+function desmarcarDigitando() {
+  if (usuarioDigitandoTimeout) clearTimeout(usuarioDigitandoTimeout);
+  usuarioDigitandoTimeout = setTimeout(() => {
+    usuarioDigitando = false;
+    if (renderPending) {
+      renderPending = false;
+      render();
+    }
+  }, 800);
+}
+
+function calcHash() {
+  return JSON.stringify({ p: state.pessoas, l: state.lancamentos });
+}
+
+function atualizarHash() {
+  lastDataHash = calcHash();
+}
 
 // ---------- API ----------
 async function apiGet() {
@@ -68,10 +97,16 @@ function normalizarDados(data) {
 }
 
 async function carregarDados(silencioso = false) {
-  if (usuarioDigitando) return;
   try {
     const raw = await apiGet();
     const data = normalizarDados(raw);
+
+    const novoHash = JSON.stringify({ p: data.pessoas, l: data.lancamentos });
+
+    // Nada mudou? Sai sem tocar no DOM.
+    if (silencioso && novoHash === lastDataHash) return;
+
+    lastDataHash = novoHash;
     state.pessoas = data.pessoas;
     state.lancamentos = data.lancamentos;
     state.filtroPessoasIds = state.filtroPessoasIds.filter(id =>
@@ -82,6 +117,12 @@ async function carregarDados(silencioso = false) {
       state.primeiraCarga = false;
       const skel = document.getElementById('skeleton-wrap');
       if (skel) skel.style.display = 'none';
+    }
+
+    // Está digitando? Adia o render até desfocar.
+    if (silencioso && usuarioDigitando) {
+      renderPending = true;
+      return;
     }
 
     render();
@@ -143,8 +184,8 @@ function compararMes(a, b) {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-// ---------- Emoji Avatar ----------
-const EMOJI_POOL = ['🦊', '🐼', '🦁', '🐯', '🐨', '🐸', '🦄', '🐙', '🦉', '🦋', '🌺', '🌸', '🍀', '⭐', '🌙', '🔥', '💎', '🎨', '🎯', '🚀', '⚡', '🌊', '🍉', '🍓', '🥑', '🍕', '🎸', '🎮', '🏆', '🎈'];
+// ---------- Avatar ----------
+const EMOJI_POOL = ['🦊','🐼','🦁','🐯','🐨','🐸','🦄','🐙','🦉','🦋','🌺','🌸','🍀','⭐','🌙','🔥','💎','🎨','🎯','🚀','⚡','🌊','🍉','🍓','🥑','🍕','🎸','🎮','🏆','🎈'];
 const COLOR_POOL = [
   'linear-gradient(135deg, #ff6b6b, #feca57)',
   'linear-gradient(135deg, #48dbfb, #0abde3)',
@@ -181,22 +222,17 @@ function avatarHtml(nome, size) {
   return `<span class="avatar" style="--avatar-bg:${bg};background:${bg};${st}" title="${escapeHtml(nome)}">${emoji}</span>`;
 }
 
-// ---------- Expansão de parcelas ----------
+// ---------- Parcelas ----------
 function expandirParcelas(lancamentos) {
   const ocorrencias = [];
   for (const l of lancamentos) {
     for (let i = 0; i < l.parcelas; i++) {
       const mes = somarMes(l.mesInicial, i);
       ocorrencias.push({
-        id: l.id,
-        lancamentoId: l.id,
-        descricao: l.descricao,
-        valor: l.valor,
-        parcelaAtual: i + 1,
-        totalParcelas: l.parcelas,
-        tipo: l.tipo,
-        pessoasIds: l.pessoasIds,
-        mes
+        id: l.id, lancamentoId: l.id,
+        descricao: l.descricao, valor: l.valor,
+        parcelaAtual: i + 1, totalParcelas: l.parcelas,
+        tipo: l.tipo, pessoasIds: l.pessoasIds, mes
       });
     }
   }
@@ -243,7 +279,6 @@ function toast({ type = 'info', title, message, duration = 4000, actionText, onA
 
   const el = document.createElement('div');
   el.className = `toast ${type}`;
-
   const icons = { success: '✓', error: '✕', info: 'ℹ' };
   const icon = icons[type] || 'ℹ';
 
@@ -264,12 +299,8 @@ function toast({ type = 'info', title, message, duration = 4000, actionText, onA
   };
 
   el.querySelector('.toast-close').onclick = remove;
-
   if (actionText && onAction) {
-    el.querySelector('.toast-action').onclick = () => {
-      onAction();
-      remove();
-    };
+    el.querySelector('.toast-action').onclick = () => { onAction(); remove(); };
   }
 
   container.appendChild(el);
@@ -277,7 +308,7 @@ function toast({ type = 'info', title, message, duration = 4000, actionText, onA
   return el;
 }
 
-// ---------- Count-up animation ----------
+// ---------- Count-up ----------
 function animateCountUp(el, targetValue, { duration = 700, formatter = fmtBRL } = {}) {
   if (!el) return;
   const current = parseFloat(el.dataset.countup) || 0;
@@ -303,10 +334,7 @@ function animateCountUp(el, targetValue, { duration = 700, formatter = fmtBRL } 
 function dispararConfetti() {
   if (typeof confetti !== 'function') return;
   const defaults = {
-    spread: 70,
-    startVelocity: 45,
-    ticks: 120,
-    zIndex: 10001,
+    spread: 70, startVelocity: 45, ticks: 120, zIndex: 10001,
     colors: ['#22d896', '#00e5ff', '#a855f7', '#feca57', '#ff6b6b']
   };
   confetti({ ...defaults, particleCount: 80, origin: { x: 0.3, y: 0.7 } });
@@ -324,6 +352,7 @@ function render() {
     renderDashboard();
     toggleApp();
     atualizarFocusModal();
+    jaRenderizouUmaVez = true;
   } catch (e) {
     console.error('Erro ao renderizar:', e);
   }
@@ -348,11 +377,7 @@ function renderListaPessoas() {
     const ativo = state.filtroPessoasIds.includes(p.id);
     const chip = document.createElement('span');
     chip.className = 'chip chip-pessoa' + (ativo ? ' active' : '');
-
-    chip.innerHTML = `
-      ${avatarHtml(p.nome, 22)}
-      <span class="p-nome">${escapeHtml(p.nome)}</span>
-    `;
+    chip.innerHTML = `${avatarHtml(p.nome, 22)}<span class="p-nome">${escapeHtml(p.nome)}</span>`;
 
     const nomeEl = chip.querySelector('.p-nome');
     nomeEl.style.cursor = 'pointer';
@@ -392,7 +417,6 @@ function renderListaMeses() {
   }
 
   const atual = mesAtual();
-
   for (const m of meses) {
     const ativo = state.filtroMeses.includes(m);
     const futuro = m > atual;
@@ -440,14 +464,12 @@ function renderTotalGeral() {
   if (total > 0) elT.classList.add('entrada');
   else if (total < 0) elT.classList.add('saida');
 
-  // Checar se passou a ser positivo → confetti
   if (state.totalPositivoAnterior !== null && state.totalPositivoAnterior <= 0 && total > 0) {
     dispararConfetti();
     toast({ type: 'success', title: 'No azul! 🎉', message: 'Total geral virou positivo.' });
   }
   state.totalPositivoAnterior = total;
 
-  // Budget bar
   renderBudgetBar(document.getElementById('geral-orcamento'), entrada, saida);
 
   const wrapComp = document.getElementById('geral-comparativo');
@@ -483,7 +505,6 @@ function renderBudgetBar(el, entrada, saida) {
       <span class="status ${status}">${statusText}</span>
     </div>
   `;
-  // Anima a largura
   requestAnimationFrame(() => {
     const fill = el.querySelector('.bb-fill');
     if (fill) fill.style.width = pct + '%';
@@ -507,8 +528,11 @@ function renderTabelasPessoas() {
 
   ids.forEach((pid, idx) => {
     const el = criarTabelaPessoa(pid);
-    el.style.setProperty('--delay', (200 + idx * 60) + 'ms');
-    el.classList.add('fade-in');
+    // Só anima na PRIMEIRA renderização. Nos refreshes posteriores, sem animação.
+    if (!jaRenderizouUmaVez) {
+      el.style.setProperty('--delay', (200 + idx * 60) + 'ms');
+      el.classList.add('fade-in');
+    }
     container.appendChild(el);
   });
 
@@ -525,7 +549,7 @@ function renderTabelasPessoas() {
   }
 }
 
-function criarTabelaPessoa(pid, { semForm = false } = {}) {
+function criarTabelaPessoa(pid) {
   const p = state.pessoas.find(x => x.id === pid);
   if (!p) return document.createElement('div');
 
@@ -541,7 +565,6 @@ function criarTabelaPessoa(pid, { semForm = false } = {}) {
   const section = document.createElement('section');
   section.className = 'card tabela-pessoa';
 
-  // Header com avatar
   const header = document.createElement('div');
   header.className = 'pessoa-header';
   header.innerHTML = `
@@ -556,34 +579,27 @@ function criarTabelaPessoa(pid, { semForm = false } = {}) {
   header.querySelector('.btn-focus').onclick = () => abrirFocus(pid);
   section.appendChild(header);
 
-  // Resumo
   const resumo = document.createElement('div');
   resumo.className = 'pessoa-resumo';
   resumo.innerHTML = `
-    <div><span class="label">Entrada</span><span class="valor entrada" data-val="${entrada}">${fmtBRL(entrada)}</span></div>
-    <div><span class="label">Saída</span><span class="valor saida" data-val="${saida}">${fmtBRL(saida)}</span></div>
-    <div><span class="label">Total</span><span class="valor ${total > 0 ? 'entrada' : total < 0 ? 'saida' : ''}" data-val="${total}">${fmtBRL(total)}</span></div>
+    <div><span class="label">Entrada</span><span class="valor entrada">${fmtBRL(entrada)}</span></div>
+    <div><span class="label">Saída</span><span class="valor saida">${fmtBRL(saida)}</span></div>
+    <div><span class="label">Total</span><span class="valor ${total > 0 ? 'entrada' : total < 0 ? 'saida' : ''}">${fmtBRL(total)}</span></div>
   `;
   section.appendChild(resumo);
 
-  // Budget bar
   const bb = document.createElement('div');
   bb.className = 'budget-bar';
   renderBudgetBar(bb, entrada, saida);
   if (entrada > 0 || saida > 0) section.appendChild(bb);
 
-  // Sparkline (últimos 6 meses)
   const sparkData = calcularSparklineData(todasOcsPessoa);
   if (sparkData.length >= 2) {
     section.appendChild(criarSparkline(sparkData));
   }
 
-  // Form
-  if (!semForm) {
-    section.appendChild(criarFormLancamento(pid));
-  }
+  section.appendChild(criarFormLancamento(pid));
 
-  // Tabela
   const wrap = document.createElement('div');
   wrap.className = 'table-wrap';
 
@@ -608,11 +624,8 @@ function criarTabelaPessoa(pid, { semForm = false } = {}) {
       table.innerHTML = `
         <thead>
           <tr>
-            <th>Descrição</th>
-            <th>Tipo</th>
-            <th>Parcela</th>
-            <th class="text-right">Valor</th>
-            <th></th>
+            <th>Descrição</th><th>Tipo</th><th>Parcela</th>
+            <th class="text-right">Valor</th><th></th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -700,10 +713,11 @@ function criarFormLancamento(pid) {
   form.querySelector('[data-campo="tipo"]').value = rasc.tipo || 'saida';
 
   form.querySelectorAll('input, select').forEach(el => {
-    el.addEventListener('focus', () => { usuarioDigitando = true; });
-    el.addEventListener('blur', () => { usuarioDigitando = false; });
+    el.addEventListener('focus', marcarDigitando);
+    el.addEventListener('blur', desmarcarDigitando);
 
     const atualizar = () => {
+      marcarDigitando();
       const campo = el.dataset.campo;
       if (campo === 'mesNum' || campo === 'anoNum') {
         const mSel = form.querySelector('[data-campo="mesNum"]').value;
@@ -736,10 +750,7 @@ function criarFormLancamento(pid) {
       pessoasIds: [pid], mesInicial: mes
     });
 
-    state.rascunhos[pid] = {
-      descricao: '', valor: '', parcelas: '',
-      tipo: tipo, mes: mes
-    };
+    state.rascunhos[pid] = { descricao: '', valor: '', parcelas: '', tipo, mes };
   });
 
   return form;
@@ -747,7 +758,6 @@ function criarFormLancamento(pid) {
 
 // ---------- Sparkline ----------
 function calcularSparklineData(ocorrencias) {
-  // Pega os últimos 6 meses (incluindo atual)
   const atual = mesAtual();
   const meses = [];
   for (let i = 5; i >= 0; i--) meses.push(somarMes(atual, -i));
@@ -897,7 +907,7 @@ function linhaDiff(label, a, b) {
   `;
 }
 
-// ---------- Dashboard (gráficos) ----------
+// ---------- Dashboard ----------
 function renderDashboard() {
   const dash = document.getElementById('dashboard');
   if (!dash) return;
@@ -931,17 +941,12 @@ function renderChartEvolucao() {
   if (!canvas) return;
   const colors = getThemeColors();
 
-  // Meses dos últimos 12 meses (ou todos os disponíveis, limitado)
   const todosMeses = mesesDisponiveis();
   const meses = todosMeses.slice(-12);
 
   const ocs = expandirParcelas(state.lancamentos);
-  const entradas = meses.map(m => {
-    return ocs.filter(o => o.mes === m && o.tipo === 'entrada').reduce((s, o) => s + o.valor, 0);
-  });
-  const saidas = meses.map(m => {
-    return ocs.filter(o => o.mes === m && o.tipo === 'saida').reduce((s, o) => s + o.valor, 0);
-  });
+  const entradas = meses.map(m => ocs.filter(o => o.mes === m && o.tipo === 'entrada').reduce((s, o) => s + o.valor, 0));
+  const saidas = meses.map(m => ocs.filter(o => o.mes === m && o.tipo === 'saida').reduce((s, o) => s + o.valor, 0));
 
   if (state.charts.evolucao) state.charts.evolucao.destroy();
 
@@ -951,40 +956,30 @@ function renderChartEvolucao() {
       labels: meses.map(mesLabelCurto),
       datasets: [
         {
-          label: 'Entradas',
-          data: entradas,
+          label: 'Entradas', data: entradas,
           borderColor: colors.entrada,
           backgroundColor: colors.entrada + '33',
-          fill: true,
-          tension: 0.4,
-          borderWidth: 2,
-          pointRadius: 3,
-          pointHoverRadius: 6
+          fill: true, tension: 0.4, borderWidth: 2,
+          pointRadius: 3, pointHoverRadius: 6
         },
         {
-          label: 'Saídas',
-          data: saidas,
+          label: 'Saídas', data: saidas,
           borderColor: colors.saida,
           backgroundColor: colors.saida + '33',
-          fill: true,
-          tension: 0.4,
-          borderWidth: 2,
-          pointRadius: 3,
-          pointHoverRadius: 6
+          fill: true, tension: 0.4, borderWidth: 2,
+          pointRadius: 3, pointHoverRadius: 6
         }
       ]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: jaRenderizouUmaVez ? 0 : 800 },
       plugins: {
         legend: {
           labels: { color: colors.text, font: { size: 11, weight: '600' }, boxWidth: 12, padding: 12 }
         },
         tooltip: {
-          callbacks: {
-            label: (ctx) => ctx.dataset.label + ': ' + fmtBRL(ctx.parsed.y)
-          }
+          callbacks: { label: (ctx) => ctx.dataset.label + ': ' + fmtBRL(ctx.parsed.y) }
         }
       },
       scales: {
@@ -994,8 +989,7 @@ function renderChartEvolucao() {
         },
         y: {
           ticks: {
-            color: colors.muted,
-            font: { size: 10 },
+            color: colors.muted, font: { size: 10 },
             callback: (v) => 'R$ ' + (v / 1000).toFixed(1) + 'k'
           },
           grid: { color: colors.border }
@@ -1010,7 +1004,6 @@ function renderChartDistribuicao() {
   if (!canvas) return;
   const colors = getThemeColors();
 
-  // Saídas totais por pessoa
   const porPessoa = {};
   for (const p of state.pessoas) porPessoa[p.id] = 0;
 
@@ -1041,31 +1034,26 @@ function renderChartDistribuicao() {
       datasets: [{
         data,
         backgroundColor: labels.map((_, i) => palette[i % palette.length]),
-        borderColor: colors.border,
-        borderWidth: 2,
-        hoverOffset: 8
+        borderColor: colors.border, borderWidth: 2, hoverOffset: 8
       }]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '65%',
+      responsive: true, maintainAspectRatio: false, cutout: '65%',
+      animation: { duration: jaRenderizouUmaVez ? 0 : 800 },
       plugins: {
         legend: {
           position: 'bottom',
           labels: { color: colors.text, font: { size: 11, weight: '600' }, boxWidth: 12, padding: 10 }
         },
         tooltip: {
-          callbacks: {
-            label: (ctx) => ctx.label + ': ' + fmtBRL(ctx.parsed)
-          }
+          callbacks: { label: (ctx) => ctx.label + ': ' + fmtBRL(ctx.parsed) }
         }
       }
     }
   });
 }
 
-// ---------- Focus Mode ----------
+// ---------- Focus ----------
 function abrirFocus(pid) {
   state.focusPessoaId = pid;
   const modal = document.getElementById('focus-modal');
@@ -1098,8 +1086,25 @@ function atualizarFocusModal() {
   }
   const content = document.getElementById('focus-content');
   if (!content) return;
+
+  // Preserva foco se estiver digitando dentro do modal
+  const ativo = document.activeElement;
+  const ativoInfo = ativo && content.contains(ativo) && ativo.dataset && ativo.dataset.campo
+    ? { campo: ativo.dataset.campo, pos: ativo.selectionStart }
+    : null;
+
   content.innerHTML = '';
   content.appendChild(criarTabelaPessoa(pid));
+
+  if (ativoInfo) {
+    const el = content.querySelector(`[data-pessoa="${pid}"][data-campo="${ativoInfo.campo}"]`);
+    if (el) {
+      el.focus();
+      if (el.setSelectionRange && ativoInfo.pos != null) {
+        try { el.setSelectionRange(ativoInfo.pos, ativoInfo.pos); } catch (_) {}
+      }
+    }
+  }
 }
 
 // ---------- Ações ----------
@@ -1108,9 +1113,11 @@ async function adicionarPessoa(nome) {
   if (!t) return;
   const pessoa = { id: uid(), nome: t };
   state.pessoas.push(pessoa);
+  atualizarHash();
   render();
   try {
     await apiPost('addPessoa', pessoa);
+    atualizarHash();
     toast({ type: 'success', title: 'Pessoa adicionada', message: t });
   } catch (e) {
     toast({ type: 'error', title: 'Erro ao salvar', message: e.message });
@@ -1121,18 +1128,16 @@ async function removerPessoa(id) {
   const p = state.pessoas.find(x => x.id === id);
   if (!p) return;
   const temLancamentos = state.lancamentos.some(l => l.pessoasIds.includes(id));
-
-  // Snapshot pra undo
   const snapshot = { pessoa: { ...p }, idx: state.pessoas.findIndex(x => x.id === id) };
 
   state.pessoas = state.pessoas.filter(x => x.id !== id);
   state.filtroPessoasIds = state.filtroPessoasIds.filter(x => x !== id);
   delete state.rascunhos[id];
+  atualizarHash();
   render();
 
-  try { await apiPost('deletePessoa', { id }); } catch (e) {
-    toast({ type: 'error', title: 'Erro ao remover', message: e.message });
-  }
+  try { await apiPost('deletePessoa', { id }); atualizarHash(); }
+  catch (e) { toast({ type: 'error', title: 'Erro ao remover', message: e.message }); }
 
   toast({
     type: 'info',
@@ -1142,9 +1147,11 @@ async function removerPessoa(id) {
     actionText: 'Desfazer',
     onAction: async () => {
       state.pessoas.splice(snapshot.idx, 0, snapshot.pessoa);
+      atualizarHash();
       render();
       try {
         await apiPost('addPessoa', snapshot.pessoa);
+        atualizarHash();
         toast({ type: 'success', message: 'Pessoa restaurada.' });
       } catch (e) {
         toast({ type: 'error', message: 'Não consegui restaurar.' });
@@ -1164,9 +1171,11 @@ async function adicionarLancamento(l) {
     mesInicial: l.mesInicial || mesAtual()
   };
   state.lancamentos.push(novo);
+  atualizarHash();
   render();
   try {
     await apiPost('addLancamento', novo);
+    atualizarHash();
     toast({
       type: 'success',
       title: 'Lançamento adicionado',
@@ -1185,11 +1194,11 @@ async function removerLancamentoComUndo(id) {
   const idx = state.lancamentos.findIndex(x => x.id === id);
 
   state.lancamentos = state.lancamentos.filter(x => x.id !== id);
+  atualizarHash();
   render();
 
-  try { await apiPost('deleteLancamento', { id }); } catch (e) {
-    toast({ type: 'error', message: e.message });
-  }
+  try { await apiPost('deleteLancamento', { id }); atualizarHash(); }
+  catch (e) { toast({ type: 'error', message: e.message }); }
 
   toast({
     type: 'info',
@@ -1199,9 +1208,11 @@ async function removerLancamentoComUndo(id) {
     actionText: 'Desfazer',
     onAction: async () => {
       state.lancamentos.splice(idx, 0, snapshot);
+      atualizarHash();
       render();
       try {
         await apiPost('addLancamento', snapshot);
+        atualizarHash();
         toast({ type: 'success', message: 'Restaurado.' });
       } catch (e) {
         toast({ type: 'error', message: 'Não consegui restaurar.' });
@@ -1214,7 +1225,6 @@ async function removerLancamentoComUndo(id) {
 function aplicarTema(tema) {
   document.documentElement.setAttribute('data-theme', tema);
   try { localStorage.setItem('theme', tema); } catch (_) {}
-  // Re-renderiza gráficos com novas cores
   setTimeout(() => {
     if (state.charts.evolucao || state.charts.distribuicao) renderDashboard();
   }, 400);
@@ -1223,8 +1233,6 @@ function aplicarTema(tema) {
 function animarTrocaTemaFallback(x, y, proximoTema) {
   const overlay = document.createElement('div');
   overlay.className = 'theme-transition-overlay';
-  const tmp = document.createElement('html');
-  tmp.setAttribute('data-theme', proximoTema);
 
   const maxR = Math.hypot(
     Math.max(x, window.innerWidth - x),
@@ -1259,10 +1267,8 @@ function alternarTema(event) {
 
   if (document.startViewTransition) {
     const maxR = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
-
     const transition = document.startViewTransition(() => aplicarTema(proximo));
-
-  transition.ready.then(() => {
+    transition.ready.then(() => {
       document.documentElement.animate(
         { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${maxR}px at ${x}px ${y}px)`] },
         { duration: 700, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', pseudoElement: '::view-transition-new(root)' }
@@ -1274,16 +1280,9 @@ function alternarTema(event) {
 }
 
 function initTheme() {
-  // Já aplicado no inline do <head>, aqui só bind do botão
   const btn = document.getElementById('theme-toggle');
-  if (!btn) {
-    console.warn('[tema] Botão #theme-toggle não encontrado.');
-    return;
-  }
-  btn.addEventListener('click', (e) => {
-    e.preventDefault();
-    alternarTema(e);
-  });
+  if (!btn) { console.warn('[tema] Botão #theme-toggle não encontrado.'); return; }
+  btn.addEventListener('click', (e) => { e.preventDefault(); alternarTema(e); });
 }
 
 // ---------- Modo compacto ----------
@@ -1322,7 +1321,6 @@ function initDashboardToggle() {
       content.style.display = '';
       btn.textContent = 'Ocultar';
       try { localStorage.setItem('dashboard-hidden', '0'); } catch (_) {}
-      // Re-renderiza gráficos para ajustar tamanho
       setTimeout(() => renderDashboard(), 50);
     } else {
       content.style.display = 'none';
@@ -1332,14 +1330,13 @@ function initDashboardToggle() {
   });
 }
 
-// ---------- Focus modal init ----------
+// ---------- Focus modal ----------
 function initFocusModal() {
   const modal = document.getElementById('focus-modal');
   if (!modal) return;
 
   const backdrop = modal.querySelector('.focus-backdrop');
   const closeBtn = modal.querySelector('.focus-close');
-
   if (backdrop) backdrop.addEventListener('click', fecharFocus);
   if (closeBtn) closeBtn.addEventListener('click', fecharFocus);
 
@@ -1357,9 +1354,14 @@ function bindEvents() {
 
   const formPessoa = document.getElementById('form-pessoa');
   if (formPessoa) {
+    const input = document.getElementById('nome-pessoa');
+    if (input) {
+      input.addEventListener('focus', marcarDigitando);
+      input.addEventListener('blur', desmarcarDigitando);
+      input.addEventListener('input', marcarDigitando);
+    }
     formPessoa.addEventListener('submit', (e) => {
       e.preventDefault();
-      const input = document.getElementById('nome-pessoa');
       if (!input.value.trim()) {
         toast({ type: 'error', message: 'Digite um nome.' });
         return;
@@ -1370,6 +1372,7 @@ function bindEvents() {
     });
   }
 
+  // Refresh silencioso a cada 20s
   setInterval(() => carregarDados(true), 20000);
   window.addEventListener('focus', () => carregarDados(true));
 }
