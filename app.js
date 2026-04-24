@@ -379,7 +379,6 @@ function criarTabelaPessoa(pid) {
   `;
   section.appendChild(cabecalho);
 
-  // Rascunho
   if (!state.rascunhos[pid]) {
     state.rascunhos[pid] = { descricao: '', valor: '', parcelas: '', tipo: 'saida', mes: mesAtual() };
   }
@@ -415,7 +414,6 @@ function criarTabelaPessoa(pid) {
     <button type="submit">Adicionar</button>
   `;
 
-  // Força os valores via JS (antes dos listeners)
   form.querySelector('[data-campo="descricao"]').value = rasc.descricao || '';
   form.querySelector('[data-campo="valor"]').value = rasc.valor || '';
   form.querySelector('[data-campo="parcelas"]').value = rasc.parcelas || '';
@@ -423,7 +421,6 @@ function criarTabelaPessoa(pid) {
   form.querySelector('[data-campo="anoNum"]').value = rAno;
   form.querySelector('[data-campo="tipo"]').value = rasc.tipo || 'saida';
 
-  // Listeners
   form.querySelectorAll('input, select').forEach(el => {
     el.addEventListener('focus', () => { usuarioDigitando = true; });
     el.addEventListener('blur', () => { usuarioDigitando = false; });
@@ -461,7 +458,6 @@ function criarTabelaPessoa(pid) {
       pessoasIds: [pid], mesInicial: mes
     });
 
-    // Zera descrição, valor e parcelas. Mantém mês e tipo.
     state.rascunhos[pid] = {
       descricao: '',
       valor: '',
@@ -690,19 +686,108 @@ async function removerLancamento(id) {
 }
 
 // ---------- Tema claro/escuro ----------
+function aplicarTema(tema) {
+  document.documentElement.setAttribute('data-theme', tema);
+  try { localStorage.setItem('theme', tema); } catch (_) {}
+}
+
+function animarTrocaTemaFallback(x, y, proximoTema) {
+  const temaAtual = document.documentElement.getAttribute('data-theme') || 'dark';
+
+  const overlay = document.createElement('div');
+  overlay.className = 'theme-transition-overlay';
+  overlay.setAttribute('data-theme', proximoTema);
+
+  // Aplica as variáveis do próximo tema no overlay
+  const tempHtml = document.createElement('html');
+  tempHtml.setAttribute('data-theme', proximoTema);
+
+  const maxR = Math.hypot(
+    Math.max(x, window.innerWidth - x),
+    Math.max(y, window.innerHeight - y)
+  );
+
+  overlay.style.clipPath = `circle(0px at ${x}px ${y}px)`;
+  document.body.appendChild(overlay);
+
+  // Força reflow
+  void overlay.offsetWidth;
+
+  overlay.style.transition = 'clip-path 700ms cubic-bezier(0.4, 0, 0.2, 1)';
+  overlay.style.clipPath = `circle(${maxR}px at ${x}px ${y}px)`;
+
+  setTimeout(() => {
+    aplicarTema(proximoTema);
+    // Pequeno delay pra evitar flash
+    requestAnimationFrame(() => {
+      overlay.style.transition = 'opacity 200ms ease';
+      overlay.style.opacity = '0';
+      setTimeout(() => overlay.remove(), 220);
+    });
+  }, 700);
+}
+
+function alternarTema(event) {
+  const atual = document.documentElement.getAttribute('data-theme') || 'dark';
+  const proximo = atual === 'dark' ? 'light' : 'dark';
+
+  const btn = (event && event.currentTarget) || document.getElementById('theme-toggle');
+  const rect = btn ? btn.getBoundingClientRect() : null;
+  const x = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
+  const y = rect ? rect.top + rect.height / 2 : window.innerHeight / 2;
+
+  // Se tiver View Transitions API, usa ela (mais suave)
+  if (document.startViewTransition) {
+    const maxR = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y)
+    );
+
+    const transition = document.startViewTransition(() => {
+      aplicarTema(proximo);
+    });
+
+    transition.ready.then(() => {
+      document.documentElement.animate(
+        {
+          clipPath: [
+            `circle(0px at ${x}px ${y}px)`,
+            `circle(${maxR}px at ${x}px ${y}px)`
+          ]
+        },
+        {
+          duration: 700,
+          easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+          pseudoElement: '::view-transition-new(root)'
+        }
+      );
+    }).catch(() => {
+      // Se der erro, aplica direto
+      aplicarTema(proximo);
+    });
+  } else {
+    // Fallback: overlay com círculo expandindo
+    animarTrocaTemaFallback(x, y, proximo);
+  }
+}
+
 function initTheme() {
-  const saved = localStorage.getItem('theme') || 'dark';
+  const saved = (function() {
+    try { return localStorage.getItem('theme'); } catch (_) { return null; }
+  })() || 'dark';
+
   document.documentElement.setAttribute('data-theme', saved);
 
   const btn = document.getElementById('theme-toggle');
-  if (btn) {
-    btn.addEventListener('click', () => {
-      const current = document.documentElement.getAttribute('data-theme');
-      const next = current === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', next);
-      localStorage.setItem('theme', next);
-    });
+  if (!btn) {
+    console.warn('[tema] Botão #theme-toggle não encontrado.');
+    return;
   }
+
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    alternarTema(e);
+  });
 }
 
 // ---------- Bind ----------
@@ -725,5 +810,12 @@ function bindEvents() {
 }
 
 // ---------- Init ----------
-bindEvents();
-carregarDados();
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    bindEvents();
+    carregarDados();
+  });
+} else {
+  bindEvents();
+  carregarDados();
+}
