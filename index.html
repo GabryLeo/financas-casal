@@ -1,14 +1,30 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Finanças do Casal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <!-- Background decorativo -->
+  <div class="bg-decor">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
   <main class="container">
-    <h1>Finanças</h1>
+    <header class="header-bar">
+      <h1>Finanças<span class="dot">.</span></h1>
+      <button id="theme-toggle" class="theme-toggle" type="button" title="Alternar tema" aria-label="Alternar tema">
+        <span class="icon-sun">☀️</span>
+        <span class="icon-moon">🌙</span>
+      </button>
+    </header>
 
     <!-- Adicionar pessoa -->
     <section class="card">
@@ -29,7 +45,7 @@
         <div id="lista-meses" class="chips"></div>
       </section>
 
-      <!-- Total consolidado (aparece só com 2+ pessoas selecionadas) -->
+      <!-- Total consolidado -->
       <section id="secao-total-geral" class="card hidden">
         <h2>Total geral (<span id="total-geral-nomes"></span>)</h2>
         <div class="resumo-inline">
