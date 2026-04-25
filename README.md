@@ -1,185 +1,118 @@
 # 💸 Finanças do Casal
 
-Um app web simples e bonito pra controlar finanças em conjunto, sincronizando dados em tempo real entre dois dispositivos via Google Sheets.
+✨ Funcionalidades
+📊 Gestão financeira
 
-![Badge](https://img.shields.io/badge/status-ativo-success)
-![Badge](https://img.shields.io/badge/stack-vanilla%20JS-yellow)
-![Badge](https://img.shields.io/badge/backend-Google%20Sheets-green)
+Múltiplas pessoas com avatares coloridos gerados automaticamente
+Lançamentos com parcelas que se distribuem automaticamente nos meses futuros
+Filtros combinados por pessoa e por período (mês a mês)
+Total geral quando 2+ pessoas estão selecionadas
+Lançamentos compartilhados (rateio entre pessoas)
 
----
+📈 Visualização
 
-## ✨ Funcionalidades
+Dashboard com gráficos de evolução mensal e distribuição por pessoa (Chart.js)
+Sparklines individuais com saldo dos últimos 6 meses
+Barra de orçamento mostrando % de gastos vs. entradas
+Comparativo automático entre meses selecionados (com diferenças e %)
+Animação count-up nos valores totais
+Confetti 🎉 quando o saldo vira positivo
 
-- 👥 **Múltiplas pessoas** — cadastre quantas quiser, cada uma com sua tabela
-- 💰 **Entradas e saídas** com descrição, valor, parcelas, tipo e mês
-- 📅 **Controle por mês/ano** — cada lançamento é vinculado a um mês específico
-- 🔄 **Parcelas distribuídas** — uma compra em 3x cria automaticamente parcelas nos meses subsequentes
-- 🔮 **Previsão de lançamentos futuros** — veja o que vai cair nos próximos meses
-- 📊 **Comparativo entre meses** — compare períodos com diferença em R$ e porcentagem
-- 🧮 **Totais consolidados** — soma automática quando selecionar várias pessoas
-- ☁️ **Sincronização em nuvem** via Google Sheets (grátis)
-- 📱 **Responsivo** — funciona bem no celular e no desktop
-- 🖤 **Visual limpo** em preto e branco, com destaque colorido pros valores (verde/vermelho)
+🎨 Experiência
 
----
-
-## 🖼️ Estrutura visual
-┌──────────────────────────────────────────┐
-│  Adicionar pessoa                        │
-│  [Gabryel ×] [Namorada ×]                │
-└──────────────────────────────────────────┘
-┌──────────────────────────────────────────┐
-│  Período                                 │
-│  [Jan/25] [Fev/25] [Mar/25] [🔮 Abr/25]  │
-└──────────────────────────────────────────┘
-┌──────────────────────────────────────────┐
-│  Total Geral (se 2+ pessoas)             │
-│  Entrada / Saída / Total                 │
-│  [ Comparativo entre meses ]             │
-└──────────────────────────────────────────┘
-┌──────────────────────────────────────────┐
-│  Gabryel                                 │
-│  Big numbers: Entrada / Saída / Total    │
-│  [ Form: descrição, valor, parcelas,     │
-│    mês, tipo, adicionar ]                │
-│  ── Janeiro/2025 ──                      │
-│  [ tabela de lançamentos ]               │
-│  ── Fevereiro/2025 ──                    │
-│  [ tabela de lançamentos ]               │
-│  [ Comparativo entre meses ]             │
-└──────────────────────────────────────────┘
-Copiar
----
-
-## 🚀 Tecnologias
-
-- **HTML5 + CSS3 + JavaScript puro** (sem frameworks)
-- **Google Sheets** como banco de dados
-- **Google Apps Script** como API backend
-- **GitHub Pages** como hospedagem (grátis)
-
----
-
-## 🛠️ Setup (do zero)
-
-### 1. Planilha do Google Sheets
-
-Crie uma nova planilha com duas abas:
-
-**Aba `pessoas`** (cabeçalhos na linha 1):
-| id | nome |
-|----|------|
-
-**Aba `lancamentos`** (cabeçalhos na linha 1):
-| id | descricao | valor | parcelas | tipo | pessoasIds | mesInicial |
-|----|-----------|-------|----------|------|------------|------------|
-
-### 2. Apps Script (API)
-
-1. Na planilha: **Extensões → Apps Script**
-2. Cole o código de `apps-script.gs` (veja o arquivo no repositório)
-3. Salve e clique em **Implantar → Nova implantação**
-4. Tipo: **Aplicativo da Web**
-5. Configure:
-   - **Executar como**: Eu
-   - **Quem pode acessar**: Qualquer pessoa
-6. Copie a URL gerada
-
-### 3. Atualize o `app.js`
-
-Substitua a constante `API_URL` pela URL copiada:
-
-javascript
-const API_URL = 'https://script.google.com/macros/s/SEU_CODIGO/exec';
-4. Hospede no GitHub Pages
-
-Faça upload dos arquivos (index.html, styles.css, app.js) num repositório público
-Vá em Settings → Pages
-Source: Deploy from a branch → main → /(root) → Save
-Aguarde 1-2 minutos e acesse o link gerado
+Tema claro/escuro com transição circular suave (View Transitions API)
+Modo compacto para visualizar mais conteúdo
+Modo focus para análise individual de cada pessoa
+Toasts com ação de "Desfazer" em remoções
+Refresh silencioso a cada 20s (não interrompe digitação)
+Skeleton loading na carga inicial
+Persistência local de preferências (tema, modo compacto, dashboard)
+Responsivo mobile-first
 
 
-📖 Como usar
-Adicionar pessoa
+🚀 Tecnologias
 
-Digite o nome e clique em "Adicionar"
-A pessoa aparece como um chip — clique no nome pra filtrar, clique no × pra remover
-
-Adicionar lançamento
-
-Na tabela de cada pessoa, preencha:
-
-Descrição (ex: "Mercado")
-Valor (ex: 250.00)
-Parcelas (ex: 3 — distribui nos próximos 3 meses)
-Mês (padrão: mês atual, pode alterar)
-Tipo (Entrada ou Saída)
+HTML, CSS e JavaScript puros — sem frameworks, sem build step
+Google Apps Script como backend (planilha como banco de dados)
+Chart.js 4 para gráficos
+canvas-confetti para celebrações
+Inter como tipografia
 
 
-Clique em "Adicionar"
+📦 Estrutura
+Copiar.
+├── index.html      # Estrutura da página
+├── styles.css      # Design system com variáveis de tema
+├── app.js          # Lógica do app + integração com API
+└── README.md
 
-Filtrar por período
+⚙️ Configuração
+1. Backend (Google Apps Script)
+Crie uma planilha no Google Sheets com duas abas:
+Aba Pessoas
+idnome......
+Aba Lancamentos
+iddescricaovalorparcelastipopessoasIdsmesInicial............entrada/saidaid1,id2YYYY-MM
+No menu Extensões → Apps Script, crie um endpoint que aceite as ações:
 
-Clique nos chips de meses pra filtrar
-Meses futuros aparecem com bordinha tracejada 🔮
-Selecione 2+ meses pra aparecer o comparativo
+GET → retorna { pessoas: [], lancamentos: [] }
+POST com action:
 
-Comparar meses
-
-Com 2+ meses selecionados, aparece um card de comparativo embaixo de cada tabela mostrando:
-
-Valores individuais de cada mês
-Diferença entre o primeiro e o último (em R$ e %)
-Soma total do período
+addPessoa / deletePessoa
+addLancamento / deleteLancamento
 
 
 
-Lançamentos conjuntos
+Publique como Web App (acesso "Qualquer pessoa") e copie a URL.
+2. Frontend
+No app.js, atualize a constante:
+jsCopiarconst API_URL = 'https://script.google.com/macros/s/SUA_URL/exec';
+3. Servir
+Pode abrir o index.html diretamente, hospedar no GitHub Pages, Netlify, Vercel etc. Não há build step.
+bashCopiar# Opcional: servidor local
+npx serve .
 
-Quando uma pessoa aparece em múltiplas tabelas, uma sublegenda mostra "com [outra pessoa]"
-Quando 2+ pessoas estão selecionadas, aparece uma seção de "Total Geral" somando tudo
+🎯 Como usar
 
+Adicione pessoas no card superior
+Filtre por pessoa clicando nos chips (combine quantos quiser)
+Adicione lançamentos no formulário de cada pessoa
 
-🔒 Privacidade
-
-O código do site fica público no GitHub (qualquer um pode ver o HTML/CSS/JS)
-Os dados ficam na sua planilha privada do Google
-Só quem tem o link do site acessa o app
-A URL do Apps Script é um hash aleatório — impossível de adivinhar
-
-
-⚠️ Limitações conhecidas
-
-Apps Script tem latência de ~1-3s por requisição (uso pessoal funciona bem)
-Sem autenticação — quem tem o link acessa
-Sem edição de lançamentos (só adicionar/remover)
-Remover uma parcela remove todas do mesmo lançamento
+Use o campo Parcelas para distribuir o valor por N meses
+Selecione Mês e Ano iniciais
 
 
-🌱 Possíveis melhorias futuras
-
- Editar lançamentos existentes
- Categorias (mercado, lazer, contas, etc.)
- Gráficos de evolução mensal
- Exportar pra CSV/PDF
- Senha de acesso
- PWA (instalar como app no celular)
- Metas e orçamento mensal
- Dark/light mode
+Filtre por período clicando nos meses disponíveis
+Compare meses selecionando 2 ou mais
+Use o modo focus (ícone ⤢) para foco total em uma pessoa
 
 
-📄 Licença
-Uso livre para fins pessoais. Se quiser adaptar pro seu caso, fique à vontade! 💕
+🎨 Personalização
+Todas as cores, raios e transições estão em variáveis CSS no topo do styles.css:
+cssCopiar:root {
+  --radius: 16px;
+  --transition: 0.35s cubic-bezier(.4, 0, .2, 1);
+}
 
-Feito com ☕ e planilhas.
-Copiar
----
+html[data-theme="dark"]  { /* paleta dark  */ }
+html[data-theme="light"] { /* paleta light */ }
+Modifique as variáveis --accent, --accent-2, --entrada, --saida para criar seu próprio tema.
 
-## Como adicionar no GitHub
+🧠 Decisões técnicas
 
-1. No seu repositório, clique em **"Add file" → "Create new file"**
-2. Nome do arquivo: `README.md`
-3. Cole o conteúdo acima
+Sem framework: o app é pequeno o suficiente para que vanilla JS seja mais rápido, leve e sem dependências
+Refresh otimista: mudanças são aplicadas localmente e sincronizadas em background, com Desfazer em caso de erro
+Hash de dados: o polling silencioso só re-renderiza se algo mudou de verdade
+Preservação de foco: ao re-renderizar durante digitação, o input ativo mantém posição do cursor
+Glassmorphism + blobs: efeito visual moderno sem peso (CSS puro)
+
+
+📝 Licença
+MIT — use, modifique e compartilhe à vontade.
+
+<div align="center">
+Feito com ☕ e ❤️ para organizar a vida financeira do casal.
+</div>
 4. Clique em **"Commit changes"**
 
 O README vai aparecer automaticamente na página inicial do repositório, formatadinho e bonito! 🎨
